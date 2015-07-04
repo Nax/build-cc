@@ -95,34 +95,37 @@ tar xjf gmp.tar.bz2 -C gcc/gmp --strip=1
 echo
 
 echo "Downloading mpc"
-curl -#L "https://ftp.gnu.org/gnu/mpc/mpc-$mpc_version.tar.bz2" -o mpc.tar.bz2
+curl -#L "https://ftp.gnu.org/gnu/mpc/mpc-$mpc_version.tar.gz" -o mpc.tar.gz
 mkdir -p gcc/mpc
-tar xjf mpc.tar.bz2 -C gcc/mpc --strip=1
+tar xzf mpc.tar.gz -C gcc/mpc --strip=1
 echo
 
 for target in $targets; do
-  cp -r binutils binutils-$target
-  cd binutils-$target
+  cd binutils
+  make distclean || true
   binutils_conf=""
   if $efi; then
     binutils_conf="--enable-targets=i386-pe,x86_64-pe"
   fi
-  ./configure --prefix="$prefix" --target="$target" --disable-nls --enable-64-bit-bfd $binutils_conf
+  ./configure --with-sysroot --prefix="$prefix/$target" --target="$target" --disable-nls --enable-64-bit-bfd $binutils_conf
   make -j$thread_count all
   make install
   cd ..
   
-  cp -r gcc gcc-$target
-  cd gcc-$target
-  ./configure --prefix="$prefix" --target="$target" --enable-languages=$languages --disable-multilib --disable-nls
+  cd gcc
+  make distclean || true
+  ./configure --prefix="$prefix/$target" --target="$target" --enable-languages=$languages --disable-multilib --disable-nls
   make -j$thread_count all-gcc
   make install-gcc
   cd ..
 done
 
+cd ..
 rm -rf "$tmpdir"
 
 echo "Done !"
 echo "Make sure to add the following to your PATH"
 echo
-echo "    $prefix/bin"
+for t in $targets; do
+  echo "    $prefix/$t/bin"
+done
