@@ -9,11 +9,11 @@ efi=false
 languages=c,c++
 targets=""
 
-binutils_version=2.25
-mpfr_version=3.1.3
-gmp_version=6.0.0a
+binutils_version=2.26
+mpfr_version=3.1.4
+gmp_version=6.1.0
 mpc_version=1.0.3
-gcc_version=5.1.0
+gcc_version=6.1.0
 
 script="$0"
 params="$@"
@@ -102,22 +102,28 @@ echo
 
 for target in $targets; do
   cd binutils
-  make distclean || true
   binutils_conf=""
   if $efi; then
     binutils_conf="--enable-targets=i386-pe,x86_64-pe"
   fi
-  ./configure --with-sysroot --prefix="$prefix/$target" --target="$target" --disable-nls --enable-64-bit-bfd $binutils_conf
+  rm -rf build
+  mkdir -p build
+  cd build
+  ../configure --with-sysroot --prefix="$prefix/$target" --target="$target" --disable-nls --enable-64-bit-bfd --disable-werror $binutils_conf
   make -j$thread_count all
   make install
-  cd ..
+  cd ../..
   
   cd gcc
-  make distclean || true
-  ./configure --prefix="$prefix/$target" --target="$target" --enable-languages=$languages --disable-multilib --disable-nls
+  rm -rf build
+  mkdir -p build
+  cd build
+  ../configure --prefix="$prefix/$target" --target="$target" --enable-languages=$languages --disable-multilib --disable-nls --without-headers
   make -j$thread_count all-gcc
+  make -j$thread_count all-target-libgcc
   make install-gcc
-  cd ..
+  make install-target-libgcc
+  cd ../..
 done
 
 cd ..
