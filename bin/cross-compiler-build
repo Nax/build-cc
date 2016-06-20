@@ -1,8 +1,7 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
-set -e
-
-thread_count=4
+core_count=$(getconf _NPROCESSORS_ONLN)
+thread_count=$(($core_count + $core_count / 2))
 
 prefix="/opt/cross"
 efi=false
@@ -21,16 +20,16 @@ params="$@"
 # Parse options
 while [ ! -z "$1" ]; do
   case "$1" in
-    '--efi')
+    --efi|-E)
       efi=true ;;
-    '--prefix')
+    --prefix|-P)
       shift
       if [ -z "$1" ]; then
         echo "--prefix should be followed by a value"
         exit 1
       fi
       prefix="$1" ;;
-    '--languages')
+    --languages|-L)
       shift
       if [ -z "$1" ]; then
         echo "--languages should be followed by a value"
@@ -44,7 +43,7 @@ while [ ! -z "$1" ]; do
 done
 
 if [ -z "$targets" ]; then
-  echo "usage: ./cross-compiler.sh [--prefix prefix] [--languages languages] [--efi] target [target...]"
+  echo "usage: cross-compiler-build [--prefix prefix] [--languages languages] [--efi] target [target...]"
   echo
   echo
   echo "About the options:"
