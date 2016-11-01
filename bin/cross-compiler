@@ -8,11 +8,11 @@ efi=false
 languages=c,c++
 targets=""
 
-binutils_version=2.26
-mpfr_version=3.1.4
-gmp_version=6.1.0
+binutils_version=2.27
+mpfr_version=3.1.5
+gmp_version=6.1.1
 mpc_version=1.0.3
-gcc_version=6.1.0
+gcc_version=6.2.0
 
 script="$0"
 params="$@"
