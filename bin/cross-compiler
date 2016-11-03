@@ -13,9 +13,14 @@ mpfr_version=3.1.5
 gmp_version=6.1.1
 mpc_version=1.0.3
 gcc_version=6.2.0
+gnuefi_version=3.0.4
 
 script="$0"
 params="$@"
+
+function download {
+    wget -nv -c "$1"
+}
 
 # Parse options
 while [ ! -z "$1" ]; do
@@ -51,7 +56,7 @@ if [ -z "$targets" ]; then
   echo "--efi                     Inject PE targets into binutils, making the toolset suitable for (U)EFI development"
   echo "--prefix <prefix>         Install the cross-compiler inside the specified directory. Defaults to /opt/cross"
   echo "--languages <languages>   A list of comma separated languages that the toolset will support. Defaults to c,c++"
-  echo 
+  echo
   echo
   echo "About this script:"
   echo "    This script was created by Nax."
@@ -65,39 +70,49 @@ if ! mkdir -p "$prefix" > /dev/null 2>&1 || [ ! -w "$prefix" ]; then
   exec sudo -- "$script" $params
 fi
 
-cd /tmp
-tmpdir=$(mktemp -d "cross-compiler-XXXXXXXXXX")
-cd $tmpdir
+export PATH="$prefix/bin:$PATH"
+
+tmpdir=/tmp/cross/$USER
+mkdir -p "$tmpdir"
+cd "$tmpdir"
 
 echo "Downloading binutils"
-curl -#L "https://ftp.gnu.org/gnu/binutils/binutils-$binutils_version.tar.bz2" -o binutils.tar.bz2
+download "https://ftp.gnu.org/gnu/binutils/binutils-$binutils_version.tar.bz2"
+rm -rf binutils
 mkdir -p binutils
-tar xjf binutils.tar.bz2 -C binutils --strip=1
-echo
+tar xjf binutils-$binutils_version.tar.bz2 -C binutils --strip=1
 
 echo "Downloading gcc"
-curl -#L "https://ftp.gnu.org/gnu/gcc/gcc-$gcc_version/gcc-$gcc_version.tar.bz2" -o gcc.tar.bz2
+download "https://ftp.gnu.org/gnu/gcc/gcc-$gcc_version/gcc-$gcc_version.tar.bz2"
+rm -rf gcc
 mkdir -p gcc
-tar xjf gcc.tar.bz2 -C gcc --strip=1
-echo
+tar xjf gcc-$gcc_version.tar.bz2 -C gcc --strip=1
 
 echo "Downloading mpfr"
-curl -#L "https://ftp.gnu.org/gnu/mpfr/mpfr-$mpfr_version.tar.bz2" -o mpfr.tar.bz2
+download "https://ftp.gnu.org/gnu/mpfr/mpfr-$mpfr_version.tar.bz2"
 mkdir -p gcc/mpfr
-tar xjf mpfr.tar.bz2 -C gcc/mpfr --strip=1
-echo
+tar xjf mpfr-$mpfr_version.tar.bz2 -C gcc/mpfr --strip=1
 
 echo "Downloading gmp"
-curl -#L "https://ftp.gnu.org/gnu/gmp/gmp-$gmp_version.tar.bz2" -o gmp.tar.bz2
+download "https://ftp.gnu.org/gnu/gmp/gmp-$gmp_version.tar.bz2"
 mkdir -p gcc/gmp
-tar xjf gmp.tar.bz2 -C gcc/gmp --strip=1
-echo
+tar xjf gmp-$gmp_version.tar.bz2 -C gcc/gmp --strip=1
 
 echo "Downloading mpc"
-curl -#L "https://ftp.gnu.org/gnu/mpc/mpc-$mpc_version.tar.gz" -o mpc.tar.gz
+download "https://ftp.gnu.org/gnu/mpc/mpc-$mpc_version.tar.gz"
 mkdir -p gcc/mpc
-tar xzf mpc.tar.gz -C gcc/mpc --strip=1
-echo
+tar xzf mpc-$mpc_version.tar.gz -C gcc/mpc --strip=1
+
+if $efi; then
+    echo "Downloading gnu-efi"
+    download "http://downloads.sourceforge.net/project/gnu-efi/gnu-efi-$gnuefi_version.tar.bz2"
+    rm -rf gnu-efi
+    mkdir -p gnu-efi
+    tar xjf gnu-efi-$gnuefi_version.tar.bz2 -C gnu-efi --strip=1
+    echo "Downloading gnu-efi patch (universal elf.h)"
+    download "https://gist.githubusercontent.com/Nax/3c4e4de87fa53bd3659b8ca32c27a339/raw/d9d3e45d639c6e60b0fe440865807064688f3b97/elf.h"
+    cp elf.h gnu-efi/inc
+fi
 
 for target in $targets; do
   cd binutils
@@ -108,29 +123,37 @@ for target in $targets; do
   rm -rf build
   mkdir -p build
   cd build
-  ../configure --with-sysroot --prefix="$prefix/$target" --target="$target" --disable-nls --enable-64-bit-bfd --disable-werror $binutils_conf
+  ../configure --with-sysroot --prefix="$prefix" --target="$target" --disable-nls --enable-64-bit-bfd --disable-werror $binutils_conf
   make -j$thread_count all
   make install
   cd ../..
-  
+
   cd gcc
   rm -rf build
   mkdir -p build
   cd build
-  ../configure --prefix="$prefix/$target" --target="$target" --enable-languages=$languages --disable-multilib --disable-nls --without-headers
+  ../configure --prefix="$prefix" --target="$target" --enable-languages=$languages --disable-multilib --disable-nls --without-headers
   make -j$thread_count all-gcc
   make -j$thread_count all-target-libgcc
   make install-gcc
   make install-target-libgcc
   cd ../..
+
+  mkdir -p "$prefix/$target/bin"
+  mkdir -p "$prefix/$target/lib"
+  mkdir -p "$prefix/$target/include"
+
+  if $efi; then
+      cd gnu-efi
+      make CROSS_COMPILE=${target}- PREFIX="/$target" INSTALLROOT="$prefix"
+      make CROSS_COMPILE=${target}- PREFIX="/$target" INSTALLROOT="$prefix" install
+      cd ..
+      cp elf.h "$prefix/$target/include/"
+  fi
 done
 
 cd ..
-rm -rf "$tmpdir"
 
 echo "Done !"
 echo "Make sure to add the following to your PATH"
-echo
-for t in $targets; do
-  echo "    $prefix/$t/bin"
-done
+echo "    $prefix/bin"
