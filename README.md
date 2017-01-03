@@ -1,4 +1,4 @@
-# cross-compiler
+# build-cc
 
 A shell script that automates the creation of a binutils/gcc cross toolchain.
 
@@ -6,11 +6,11 @@ A shell script that automates the creation of a binutils/gcc cross toolchain.
 
 ```sh
 # Download the script
-curl -#LO "https://raw.githubusercontent.com/Nax/cross-compiler/master/bin/cross-compiler"
+curl -#LO "https://raw.githubusercontent.com/Nax/build-cc/master/bin/build-cc"
 # Make it executable
-chmod +x cross-compiler
+chmod +x build-cc
 # Run it
-./cross-compiler x86_64-elf
+./build-cc x86_64-elf
 ```
 
 # Options
@@ -25,13 +25,13 @@ This script supports a few options:
 
 ```sh
 # Create an x86_64 elf toolchain, efi-compatible
-./cross-compiler --efi x86_64-elf
+./build-cc --efi x86_64-elf
 
 # Create an i386 elf toolchain, with C and go support, installed in /usr/local
-./cross-compiler --prefix /usr/local --languages c,go i386-elf
+./build-cc --prefix /usr/local --languages c,go i386-elf
 
 # Create a x86_64 elf toolchain, as well as an i386 pe toolchain
-./cross-compiler x86_64-elf i386-pe
+./build-cc x86_64-elf i386-pe
 ```
 
 # License

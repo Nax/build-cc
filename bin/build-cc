@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# build-cc: A cross-compiler builder
 
 core_count=$(getconf _NPROCESSORS_ONLN)
 thread_count=$(($core_count + $core_count / 2))
@@ -48,7 +49,7 @@ while [ ! -z "$1" ]; do
 done
 
 if [ -z "$targets" ]; then
-  echo "usage: cross-compiler-build [--prefix prefix] [--languages languages] [--efi] target [target...]"
+  echo "usage: build-cc [--prefix prefix] [--languages languages] [--efi] target [target...]"
   echo
   echo
   echo "About the options:"
