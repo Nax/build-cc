@@ -11,9 +11,9 @@ targets=""
 
 binutils_version=2.27
 mpfr_version=3.1.5
-gmp_version=6.1.1
+gmp_version=6.1.2
 mpc_version=1.0.3
-gcc_version=6.2.0
+gcc_version=6.3.0
 gnuefi_version=3.0.4
 
 script="$0"
