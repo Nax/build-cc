@@ -6,21 +6,30 @@ thread_count=$(($core_count + $core_count / 2))
 
 prefix="/opt/cross"
 efi=false
+debug=false
 languages=c,c++
 targets=""
 
-binutils_version=2.27
+binutils_version=2.29
 mpfr_version=3.1.5
 gmp_version=6.1.2
 mpc_version=1.0.3
-gcc_version=6.3.0
-gnuefi_version=3.0.4
+gcc_version=7.2.0
+gnuefi_version=3.0.6
 
 script="$0"
 params="$@"
 
 function download {
-    wget -nv -c "$1"
+    curl -L "$1" -O -#
+}
+
+function die {
+    echo "build-cc: fatal error"
+    if $debug; then
+        bash -i
+    fi
+    exit 1
 }
 
 # Parse options
@@ -42,6 +51,8 @@ while [ ! -z "$1" ]; do
         exit 1
       fi
       languages="$1" ;;
+    --debug)
+        debug=true ;;
     *)
       targets="$targets $1" ;;
   esac
@@ -78,38 +89,38 @@ mkdir -p "$tmpdir"
 cd "$tmpdir"
 
 echo "Downloading binutils"
-download "https://ftp.gnu.org/gnu/binutils/binutils-$binutils_version.tar.bz2"
+download "https://ftp.gnu.org/gnu/binutils/binutils-$binutils_version.tar.xz"
 rm -rf binutils
 mkdir -p binutils
-tar xjf binutils-$binutils_version.tar.bz2 -C binutils --strip=1
+tar xf binutils-$binutils_version.tar.xz -C binutils --strip=1 || die
 
 echo "Downloading gcc"
-download "https://ftp.gnu.org/gnu/gcc/gcc-$gcc_version/gcc-$gcc_version.tar.bz2"
+download "https://ftp.gnu.org/gnu/gcc/gcc-$gcc_version/gcc-$gcc_version.tar.xz"
 rm -rf gcc
 mkdir -p gcc
-tar xjf gcc-$gcc_version.tar.bz2 -C gcc --strip=1
+tar xf gcc-$gcc_version.tar.xz -C gcc --strip=1 || die
 
 echo "Downloading mpfr"
-download "https://ftp.gnu.org/gnu/mpfr/mpfr-$mpfr_version.tar.bz2"
+download "https://ftp.gnu.org/gnu/mpfr/mpfr-$mpfr_version.tar.xz"
 mkdir -p gcc/mpfr
-tar xjf mpfr-$mpfr_version.tar.bz2 -C gcc/mpfr --strip=1
+tar xf mpfr-$mpfr_version.tar.xz -C gcc/mpfr --strip=1 || die
 
 echo "Downloading gmp"
-download "https://ftp.gnu.org/gnu/gmp/gmp-$gmp_version.tar.bz2"
+download "https://ftp.gnu.org/gnu/gmp/gmp-$gmp_version.tar.xz"
 mkdir -p gcc/gmp
-tar xjf gmp-$gmp_version.tar.bz2 -C gcc/gmp --strip=1
+tar xf gmp-$gmp_version.tar.xz -C gcc/gmp --strip=1 || die
 
 echo "Downloading mpc"
 download "https://ftp.gnu.org/gnu/mpc/mpc-$mpc_version.tar.gz"
 mkdir -p gcc/mpc
-tar xzf mpc-$mpc_version.tar.gz -C gcc/mpc --strip=1
+tar xf mpc-$mpc_version.tar.gz -C gcc/mpc --strip=1 || die
 
 if $efi; then
     echo "Downloading gnu-efi"
-    download "http://downloads.sourceforge.net/project/gnu-efi/gnu-efi-$gnuefi_version.tar.bz2"
+    download "http://sourceforge.net/projects/gnu-efi/files/gnu-efi-$gnuefi_version.tar.bz2"
     rm -rf gnu-efi
     mkdir -p gnu-efi
-    tar xjf gnu-efi-$gnuefi_version.tar.bz2 -C gnu-efi --strip=1
+    tar xf gnu-efi-$gnuefi_version.tar.bz2 -C gnu-efi --strip=1 || die
     echo "Downloading gnu-efi patch (universal elf.h)"
     download "https://gist.githubusercontent.com/Nax/3c4e4de87fa53bd3659b8ca32c27a339/raw/d9d3e45d639c6e60b0fe440865807064688f3b97/elf.h"
     cp elf.h gnu-efi/inc
@@ -124,20 +135,20 @@ for target in $targets; do
   rm -rf build
   mkdir -p build
   cd build
-  ../configure --with-sysroot --prefix="$prefix" --target="$target" --disable-nls --enable-64-bit-bfd --disable-werror $binutils_conf
-  make -j$thread_count all
-  make install
+  ../configure --with-sysroot --prefix="$prefix" --target="$target" --disable-nls --enable-64-bit-bfd --disable-werror $binutils_conf || die
+  make -j$thread_count all || die
+  make install || die
   cd ../..
 
   cd gcc
   rm -rf build
   mkdir -p build
   cd build
-  ../configure --prefix="$prefix" --target="$target" --enable-languages=$languages --disable-multilib --disable-nls --without-headers
-  make -j$thread_count all-gcc
-  make -j$thread_count all-target-libgcc
-  make install-gcc
-  make install-target-libgcc
+  ../configure --prefix="$prefix" --target="$target" --enable-languages=$languages --disable-multilib --disable-nls --without-headers || die
+  make -j$thread_count all-gcc || die
+  make -j$thread_count all-target-libgcc || die
+  make install-gcc || die
+  make install-target-libgcc || die
   cd ../..
 
   mkdir -p "$prefix/$target/bin"
@@ -146,8 +157,8 @@ for target in $targets; do
 
   if $efi; then
       cd gnu-efi
-      make CROSS_COMPILE=${target}- PREFIX="/$target" INSTALLROOT="$prefix"
-      make CROSS_COMPILE=${target}- PREFIX="/$target" INSTALLROOT="$prefix" install
+      make CROSS_COMPILE=${target}- PREFIX="/$target" INSTALLROOT="$prefix" || die
+      make CROSS_COMPILE=${target}- PREFIX="/$target" INSTALLROOT="$prefix" install || die
       cd ..
       cp elf.h "$prefix/$target/include/"
   fi
