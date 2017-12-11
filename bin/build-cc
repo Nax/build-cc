@@ -2,7 +2,7 @@
 # build-cc: A cross-compiler builder
 
 core_count=$(getconf _NPROCESSORS_ONLN)
-thread_count=$(($core_count + $core_count / 2))
+thread_count=$(($core_count * 2))
 
 prefix="/opt/cross"
 efi=false
@@ -10,8 +10,8 @@ debug=false
 languages=c,c++
 targets=""
 
-binutils_version=2.29
-mpfr_version=3.1.5
+binutils_version=2.29.1
+mpfr_version=3.1.6
 gmp_version=6.1.2
 mpc_version=1.0.3
 gcc_version=7.2.0
