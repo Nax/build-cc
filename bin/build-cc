@@ -10,12 +10,12 @@ debug=false
 languages=c,c++
 targets=""
 
-binutils_version=2.29.1
-mpfr_version=3.1.6
+binutils_version=2.30
+mpfr_version=4.0.1
 gmp_version=6.1.2
-mpc_version=1.0.3
-gcc_version=7.2.0
-gnuefi_version=3.0.6
+mpc_version=1.1.0
+gcc_version=8.1.0
+gnuefi_version=3.0.8
 
 script="$0"
 params="$@"
