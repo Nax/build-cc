@@ -77,16 +77,27 @@ if [ -z "$targets" ]; then
 fi
 
 # Check if root is needed to install at the required prefix.
-# If that's the case, reload the script as root.
 if ! mkdir -p "$prefix" > /dev/null 2>&1 || [ ! -w "$prefix" ]; then
-  exec sudo -- "$script" $params
+  echo "You don't have write permissions to $prefix"
+  exit 1
 fi
 
 export PATH="$prefix/bin:$PATH"
 
-tmpdir=/tmp/cross/$USER
-mkdir -p "$tmpdir"
-cd "$tmpdir"
+tmproot=$(mktemp -d)
+tmpbuild="$tmproot/build"
+tmpbin="$tmproot/bin"
+mkdir -p "$tmpbuild"
+mkdir -p "$tmpbin"
+export PATH="$tmpbin:$PATH"
+
+# Workaround for BSD sed
+if command -v gsed >/dev/null 2>&1; then
+  echo "Found gsed, aliasing sed as gsed"
+  ln -s "$(which gsed)" "$tmpbin/sed"
+fi
+
+cd "$tmpbuild"
 
 echo "Downloading binutils"
 download "https://ftp.gnu.org/gnu/binutils/binutils-$binutils_version.tar.xz"
