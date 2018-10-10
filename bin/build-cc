@@ -10,11 +10,11 @@ debug=false
 languages=c,c++
 targets=""
 
-binutils_version=2.31
+binutils_version=2.31.1
 mpfr_version=4.0.1
 gmp_version=6.1.2
 mpc_version=1.1.0
-gcc_version=8.1.0
+gcc_version=8.2.0
 gnuefi_version=3.0.8
 
 script="$0"
