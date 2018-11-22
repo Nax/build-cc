@@ -4,7 +4,8 @@
 core_count=$(getconf _NPROCESSORS_ONLN)
 thread_count=$(($core_count * 2))
 
-prefix="/opt/cross"
+prefix="/usr/local/cross"
+stage=""
 efi=false
 debug=false
 languages=c,c++
@@ -52,7 +53,14 @@ while [ ! -z "$1" ]; do
       fi
       languages="$1" ;;
     --debug)
-        debug=true ;;
+      debug=true ;;
+    --stage)
+      shift
+      if [ -z "$1" ]; then
+        echo "--stage should be followed by a value"
+        exit 1
+      fi
+      stage="$1" ;;
     *)
       targets="$targets $1" ;;
   esac
@@ -60,13 +68,14 @@ while [ ! -z "$1" ]; do
 done
 
 if [ -z "$targets" ]; then
-  echo "usage: build-cc [--prefix prefix] [--languages languages] [--efi] target [target...]"
+  echo "usage: build-cc [--prefix prefix] [--languages languages] [--efi] [--stage dir] target [target...]"
   echo
   echo
   echo "About the options:"
   echo
   echo "--efi                     Inject PE targets into binutils, making the toolset suitable for (U)EFI development"
-  echo "--prefix <prefix>         Install the cross-compiler inside the specified directory. Defaults to /opt/cross"
+  echo "--stage <dir>             Install the cross-compiler into the specified directory for staging."
+  echo "--prefix <prefix>         Install the cross-compiler inside the specified directory. Defaults to /usr/local/cross"
   echo "--languages <languages>   A list of comma separated languages that the toolset will support. Defaults to c,c++"
   echo
   echo
@@ -76,13 +85,25 @@ if [ -z "$targets" ]; then
   exit
 fi
 
+if [ -z "$stage" ]; then
+  dir="$prefix"
+else
+  dir="$stage"
+fi
+
 # Check if root is needed to install at the required prefix.
-if ! mkdir -p "$prefix" > /dev/null 2>&1 || [ ! -w "$prefix" ]; then
-  echo "You don't have write permissions to $prefix"
+if ! mkdir -p "$dir" >/dev/null 2>&1 || [ ! -w "$dir" ]; then
+  echo "You don't have write permissions to $dir"
   exit 1
 fi
 
-export PATH="$prefix/bin:$PATH"
+if [ ! -z "$stage" ]; then
+  pushd "$stage" >/dev/null 2>&1
+  export DESTDIR="$PWD"
+  popd >/dev/null 2>&1
+fi
+
+export PATH="$dir/bin:$PATH"
 
 tmproot=$(mktemp -d)
 tmpbuild="$tmproot/build"
@@ -167,11 +188,11 @@ for target in $targets; do
   mkdir -p "$prefix/$target/include"
 
   if $efi; then
-      cd gnu-efi
-      make CROSS_COMPILE=${target}- PREFIX="/$target" INSTALLROOT="$prefix" || die
-      make CROSS_COMPILE=${target}- PREFIX="/$target" INSTALLROOT="$prefix" install || die
-      cd ..
-      cp elf.h "$prefix/$target/include/"
+    cd gnu-efi
+    make CROSS_COMPILE=${target}- PREFIX="/$target" INSTALLROOT="$prefix" || die
+    make CROSS_COMPILE=${target}- PREFIX="/$target" INSTALLROOT="$prefix" install || die
+    cd ..
+    cp elf.h "$prefix/$target/include/"
   fi
 done
 
