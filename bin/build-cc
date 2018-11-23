@@ -10,6 +10,10 @@ efi=false
 debug=false
 languages=c,c++
 targets=""
+host=""
+shared=true
+program_prefix=""
+program_suffix=""
 
 binutils_version=2.31.1
 mpfr_version=4.0.1
@@ -61,6 +65,29 @@ while [ ! -z "$1" ]; do
         exit 1
       fi
       stage="$1" ;;
+    --host)
+      shift
+      if [ -z "$1" ]; then
+        echo "--host should be followed by a value"
+        exit 1
+      fi
+      host="$1" ;;
+    --disable-shared)
+      shared=false ;;
+    --program-prefix)
+      shift
+      if [ -z "$1" ]; then
+        echo "--program-prefix should be followed by a value"
+        exit 1
+      fi
+      program_prefix="$1" ;;
+    --program-suffix)
+      shift
+      if [ -z "$1" ]; then
+        echo "--program-suffix should be followed by a value"
+        exit 1
+      fi
+      program_suffix="$1" ;;
     *)
       targets="$targets $1" ;;
   esac
@@ -74,6 +101,10 @@ if [ -z "$targets" ]; then
   echo "About the options:"
   echo
   echo "--efi                     Inject PE targets into binutils, making the toolset suitable for (U)EFI development"
+  echo "--program-prefix <name>   Prefix all cross-compiler programs with the given name"
+  echo "--program-suffix <name>   Suffix all cross-compiler programs with the given name"
+  echo "--disable-shared          Disable shared libraries"
+  echo "--host <host>             Build a canadian cross using the supplied host"
   echo "--stage <dir>             Install the cross-compiler into the specified directory for staging."
   echo "--prefix <prefix>         Install the cross-compiler inside the specified directory. Defaults to /usr/local/cross"
   echo "--languages <languages>   A list of comma separated languages that the toolset will support. Defaults to c,c++"
@@ -158,16 +189,30 @@ if $efi; then
     cp elf.h gnu-efi/inc
 fi
 
+common_conf="--disable-win32-registry"
+if ! $shared; then
+  common_conf="$common_conf --disable-shared"
+fi
+if [ ! -z $host ]; then
+  common_conf="$common_conf --host=$host"
+fi
+if [ ! -z $program_prefix ]; then
+  common_conf="$common_conf --program-prefix=$program_prefix"
+fi
+if [ ! -z $program_suffix ]; then
+  common_conf="$common_conf --program-suffix=$program_suffix"
+fi
+
 for target in $targets; do
   cd binutils
   binutils_conf=""
   if $efi; then
-    binutils_conf="--enable-targets=i386-pe,x86_64-pe"
+    binutils_conf="$binutils_conf --enable-targets=i386-pe,x86_64-pe"
   fi
   rm -rf build
   mkdir -p build
   cd build
-  ../configure --with-sysroot --prefix="$prefix" --target="$target" --disable-nls --enable-64-bit-bfd --disable-werror $binutils_conf || die
+  ../configure $common_conf $binutils_conf --with-sysroot --prefix="$prefix" --target="$target" --disable-nls --enable-64-bit-bfd --disable-werror || die
   make -j$thread_count all || die
   make install || die
   cd ../..
@@ -176,7 +221,7 @@ for target in $targets; do
   rm -rf build
   mkdir -p build
   cd build
-  ../configure --prefix="$prefix" --target="$target" --enable-languages=$languages --disable-multilib --disable-nls --without-headers || die
+  ../configure $common_conf --prefix="$prefix" --target="$target" --enable-languages=$languages --disable-multilib --disable-nls --without-headers || die
   make -j$thread_count all-gcc || die
   make -j$thread_count all-target-libgcc || die
   make install-gcc || die
