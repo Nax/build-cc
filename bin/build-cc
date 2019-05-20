@@ -15,11 +15,13 @@ shared=true
 program_prefix=""
 program_suffix=""
 
-binutils_version=2.31.1
-mpfr_version=4.0.1
+binutils_version=2.32
+mpfr_version=4.0.2
 gmp_version=6.1.2
 mpc_version=1.1.0
-gcc_version=8.2.0
+isl_version=0.21
+cloog_version=0.18.1
+gcc_version=9.1.0
 gnuefi_version=3.0.8
 
 script="$0"
@@ -131,10 +133,11 @@ fi
 if [ ! -z "$stage" ]; then
   pushd "$stage" >/dev/null 2>&1
   export DESTDIR="$PWD"
+  export PATH="$PWD/$prefix/bin:$PATH"
   popd >/dev/null 2>&1
+else
+  export PATH="$prefix/bin:$PATH"
 fi
-
-export PATH="$dir/bin:$PATH"
 
 tmproot=$(mktemp -d)
 tmpbuild="$tmproot/build"
@@ -177,6 +180,16 @@ echo "Downloading mpc"
 download "https://ftp.gnu.org/gnu/mpc/mpc-$mpc_version.tar.gz"
 mkdir -p gcc/mpc
 tar xf mpc-$mpc_version.tar.gz -C gcc/mpc --strip=1 || die
+
+echo "Downloading isl"
+download "http://isl.gforge.inria.fr/isl-$isl_version.tar.xz"
+mkdir -p gcc/isl
+tar xf isl-$isl_version.tar.xz -C gcc/isl --strip=1 || die
+
+echo "Downloading cloog"
+download "http://ftp.lip6.fr/pub/gcc/infrastructure/cloog-$cloog_version.tar.gz"
+mkdir -p gcc/cloog
+tar xf cloog-$cloog_version.tar.gz -C gcc/cloog --strip=1 || die
 
 if $efi; then
     echo "Downloading gnu-efi"
