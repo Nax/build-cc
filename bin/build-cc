@@ -15,13 +15,13 @@ shared=true
 program_prefix=""
 program_suffix=""
 
-binutils_version=2.32
+binutils_version=2.34
 mpfr_version=4.0.2
-gmp_version=6.1.2
+gmp_version=6.2.0
 mpc_version=1.1.0
 isl_version=0.21
 cloog_version=0.18.1
-gcc_version=9.1.0
+gcc_version=10.1.0
 gnuefi_version=3.0.8
 
 script="$0"
